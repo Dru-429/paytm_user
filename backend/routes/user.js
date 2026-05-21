@@ -1,7 +1,8 @@
-const express = require("exrpess");
-const z = required("zod");
+const express = require("express");
+const z = require("zod");
 const { User } = require("../models/db");
 const jwt = require("jsonwebtoken");
+const { authmiddleware } = require("../middleware");
 
 const router = express.Router();
 const secret = process.env.JWT_SECRET;
@@ -18,12 +19,18 @@ const signinSchema = z.object({
   password: z.string().min(6),
 });
 
+const updateSchema = z.object({
+  firstname: z.string().optional(),
+  lastname: z.string().optional(),
+  password: z.string().optional(),
+});
+
 //api/v1/signup
-router.post("./signup", async (req, res) => {
-  const { data, success, error } = signupSchema.safeParse(req, body);
+router.post("/signup", async (req, res) => {
+  const { data, success, error } = signupSchema.safeParse(req.body);
 
   if (!success) {
-    res.send(411).json({
+    return res.status(411).json({
       message: "Invalid Inputs",
       error: error,
     });
@@ -34,7 +41,7 @@ router.post("./signup", async (req, res) => {
   });
 
   if (userExists) {
-    res.send(411).json({
+    return res.status(411).json({
       message: "User already exists",
     });
   }
@@ -54,19 +61,17 @@ router.post("./signup", async (req, res) => {
   );
 
   res.status(200).send({
-    message: "User Succesfully created",
+    message: "User Successfully created",
     token,
   });
 });
 
-
 //api/v1/signin
-router.post("./signin", async (req, res) => {
-  // const { username, password } = req.body;
+router.post("/signin", async (req, res) => {
   const { success, data, error } = signinSchema.safeParse(req.body);
 
   if (!success) {
-    res.send(411).json({
+    return res.status(411).json({
       message: "Invalid Inputs",
       error: error,
     });
@@ -78,10 +83,9 @@ router.post("./signin", async (req, res) => {
   });
 
   if (!userExists) {
-    res.status(411).json({
-      message: "User not exits",
+    return res.status(411).json({
+      message: "User not exists",
     });
-    return;
   }
 
   const token = jwt.sign(
@@ -96,6 +100,56 @@ router.post("./signin", async (req, res) => {
   });
 });
 
+//Update user data route
+//api/v1/user/
+router.put("/", authmiddleware, async (req, res) => {
+  const { userId } = req;
+  const { success, data, error } = updateSchema.safeParse(req.body);
+
+  if (!success) {
+    return res.status(411).json({
+      message: "Invalid Inputs",
+      error: error,
+    });
+  }
+
+  await User.updateOne(
+    {
+      _id: userId,
+    },
+    {
+      firstname: data.firstname,
+      lastname: data.lastname,
+      password: data.password,
+    },
+  );
+
+  res.status(200).json({
+    message: "User Updated",
+  });
+});
+
+//Search route
+//api/v1/user/bulk/?filter=harkirat
+router.get("/bulk", async (req, res) => {
+  const search = req.query.filter || "";
+
+  const users = await User.find({
+    $or: [
+      { firstname: { $regex: search, $options: "i" } },
+      { lastname: { $regex: search, $options: "i" } },
+    ],
+  });
+
+  res.status(200).json({
+    users: users.map((user) => ({
+      firstname: user.firstname,``
+      lastname: user.lastname,
+      username: user.username,
+      _id: user._id,
+    })),
+  });
+});
 
 module.exports = {
   router,
