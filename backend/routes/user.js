@@ -141,6 +141,8 @@ router.get("/bulk", async (req, res) => {
     ],
   });
 
+  //If we send users, directly then it will also send password to the forntend, 
+  //so we mapped it and only sned the req. query 
   res.status(200).json({
     users: users.map((user) => ({
       firstname: user.firstname,
@@ -150,6 +152,8 @@ router.get("/bulk", async (req, res) => {
     })),
   });
 });
+
+router
 
 module.exports = {
   router,
