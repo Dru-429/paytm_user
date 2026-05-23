@@ -1,6 +1,6 @@
 const express = require("express");
 const z = require("zod");
-const { User } = require("../models/db");
+const { User, Accounts } = require("../models/db");
 const jwt = require("jsonwebtoken");
 const { authmiddleware } = require("../middleware");
 
@@ -52,6 +52,11 @@ router.post("/signup", async (req, res) => {
     lastname: data.lastname,
     password: data.password,
   });
+
+  await Accounts.create({
+    userId: newUser._id,
+    balance: 1 + Math.random() * 10000,
+  })
 
   const token = jwt.sign(
     {
